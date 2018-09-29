@@ -10,7 +10,7 @@
 
 #define ARPPRO_IPV4 0x0800
 #define IP_ADDR_LEN 4
-#define ARP_PACKET_LEN 42
+#define ARP_PACKET_LEN 42	//eth_h 14 + arp_h 8 + arp_a 20
 
 struct arp_addr{
 	uint8_t ar_sha[ETHER_ADDR_LEN];
