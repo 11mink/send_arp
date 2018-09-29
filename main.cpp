@@ -135,7 +135,7 @@ int main(int argc, char * argv[]){
 		const uint8_t* packet;
 		int res = pcap_next_ex(handle, &header, &packet);
 		if (res == 0) continue;
-		if (res == -1 || res == -2) break;
+		if (res == -1 || res == -2) return -1;
 		if(get_sender_mac((uint8_t*)packet,my_mac,my_ip,sender_mac) == 1){
 			break;
 		}
