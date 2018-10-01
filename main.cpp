@@ -13,37 +13,37 @@
 #define ARP_PACKET_LEN 42	//eth_h 14 + arp_h 8 + arp_a 20
 
 struct arp_addr{
-	uint8_t ar_sha[ETHER_ADDR_LEN];
-	uint8_t ar_sip[IP_ADDR_LEN];
-	uint8_t ar_tha[ETHER_ADDR_LEN];
-	uint8_t ar_tip[IP_ADDR_LEN];
+	uint8_t ar_sha[ETHER_ADDR_LEN];	//source hw addr
+	uint8_t ar_sip[IP_ADDR_LEN];	//source ip addr
+	uint8_t ar_tha[ETHER_ADDR_LEN];	//target hw addr
+	uint8_t ar_tip[IP_ADDR_LEN];	//target ip addr
 };
 
 void usage(){
-	printf("syntax: ./send_arp <interface> <sender ip> <target ip>\n");
-	printf("sample: send_arp wlan0 192.168.10.2 192.168.10.1\n");
+	printf("syntax: send_arp <interface> <sender ip> <target ip>\n");
+	printf("sample: send_arp ens33 192.168.10.20 192.168.10.1\n");
 }
 
 int send_arp_req(pcap_t * handle, uint8_t * buf, uint8_t* src_mac, uint8_t* dst_mac, uint8_t* sender_ip, uint8_t* target_ip){	
 	struct libnet_ethernet_hdr * eth_h = (struct libnet_ethernet_hdr*)buf;
 	struct libnet_arp_hdr * arp_h = (struct libnet_arp_hdr*)(eth_h+1);
 	struct arp_addr * arp_a = (struct arp_addr*)(arp_h+1);
-
-	for(int i=0; i<ETHER_ADDR_LEN; i++){
+	
+	for (int i=0; i<ETHER_ADDR_LEN; i++){
 		eth_h -> ether_dhost[i] = dst_mac[i];
 		eth_h -> ether_shost[i] = src_mac[i];
 	}
 	eth_h -> ether_type = htons(ETHERTYPE_ARP);
+	
 	arp_h -> ar_hrd = htons(ARPHRD_ETHER);
 	arp_h -> ar_pro = htons(ARPPRO_IPV4);
 	arp_h -> ar_hln = ETHER_ADDR_LEN;
 	arp_h -> ar_pln = IP_ADDR_LEN;
 	arp_h -> ar_op = htons(ARPOP_REQUEST);
 	
-	for(int i=0; i<ETHER_ADDR_LEN; i++)
-		arp_a -> ar_sha[i] = src_mac[i];
-		//ar_tha = 00:00:00:00:00:00
-	for(int i=0; i<IP_ADDR_LEN; i++){
+	for (int i=0; i<ETHER_ADDR_LEN; i++)
+		arp_a -> ar_sha[i] = src_mac[i];	//ar_tha = 00:00:00:00:00:00
+	for (int i=0; i<IP_ADDR_LEN; i++){
 		arp_a -> ar_sip[i] = sender_ip[i];
 		arp_a -> ar_tip[i] = target_ip[i];
 	}
@@ -52,6 +52,7 @@ int send_arp_req(pcap_t * handle, uint8_t * buf, uint8_t* src_mac, uint8_t* dst_
 		printf("arp request failed\n");
 		return -1;
 	}
+
 	return 1;
 }
 
@@ -67,19 +68,18 @@ int get_arp_rep(pcap_t* handle, uint8_t* my_mac, uint8_t* my_ip, uint8_t* sender
 		}
 
 		struct libnet_ethernet_hdr * eth_h = (struct libnet_ethernet_hdr*)packet;
-		if(ntohs(eth_h -> ether_type) != ETHERTYPE_ARP) continue;
+		if (ntohs(eth_h -> ether_type) != ETHERTYPE_ARP) continue;
 
 		struct libnet_arp_hdr * arp_h = (struct libnet_arp_hdr*)(eth_h+1);
 		struct arp_addr * arp_a = (struct arp_addr*)(arp_h+1);
-		if(ntohs(arp_h -> ar_op) != ARPOP_REPLY) continue;
+		if (ntohs(arp_h -> ar_op) != ARPOP_REPLY) continue;
 	
-		for(int i=0; i<ETHER_ADDR_LEN; i++)
-			if(arp_a -> ar_tha[i] != my_mac[i]) continue;
+		for (int i=0; i<ETHER_ADDR_LEN; i++)
+			if (arp_a -> ar_tha[i] != my_mac[i]) continue;
+		for (int i=0; i<IP_ADDR_LEN; i++)
+			if (arp_a -> ar_tip[i] != my_ip[i]) continue;
 	
-		for(int i=0; i< IP_ADDR_LEN; i++)
-			if(arp_a -> ar_tip[i] != my_ip[i]) continue;
-	
-		for(int i=0; i<ETHER_ADDR_LEN; i++)
+		for (int i=0; i<ETHER_ADDR_LEN; i++)
 			sender_mac[i] = arp_a -> ar_sha[i];
 		
 		return 1;
@@ -92,11 +92,11 @@ int get_my_addr(const char* dev, uint8_t * my_mac, uint8_t* my_ip){
 	
 	strcpy(ifrq.ifr_name, dev);
 
-	if(ioctl(s,SIOCGIFHWADDR, &ifrq) <0){
+	if (ioctl(s,SIOCGIFHWADDR, &ifrq) <0){
 		printf("Failed to get mac addr\n");
 		return -1;
 	}
-	for(int i=0; i<ETHER_ADDR_LEN; i++)
+	for (int i=0; i<ETHER_ADDR_LEN; i++)
 		my_mac[i] = (uint8_t)ifrq.ifr_hwaddr.sa_data[i];
 
 	if (ioctl(s, SIOCGIFADDR, &ifrq) <0){
@@ -109,7 +109,7 @@ int get_my_addr(const char* dev, uint8_t * my_mac, uint8_t* my_ip){
 }
 
 int main(int argc, char * argv[]){
-	if(argc != 4){
+	if (argc != 4){
 		usage();
 		return -1;
 	}
