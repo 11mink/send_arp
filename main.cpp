@@ -24,7 +24,7 @@ void usage(){
 	printf("sample: send_arp wlan0 192.168.10.2 192.168.10.1\n");
 }
 
-int arp_request(pcap_t * handle, uint8_t * buf, uint8_t* src_mac, uint8_t* dst_mac, uint8_t* sender_ip, uint8_t* target_ip){	
+int send_arp_req(pcap_t * handle, uint8_t * buf, uint8_t* src_mac, uint8_t* dst_mac, uint8_t* sender_ip, uint8_t* target_ip){	
 	struct libnet_ethernet_hdr * eth_h = (struct libnet_ethernet_hdr*)buf;
 	struct libnet_arp_hdr * arp_h = (struct libnet_arp_hdr*)(eth_h+1);
 	struct arp_addr * arp_a = (struct arp_addr*)(arp_h+1);
@@ -48,42 +48,42 @@ int arp_request(pcap_t * handle, uint8_t * buf, uint8_t* src_mac, uint8_t* dst_m
 		arp_a -> ar_tip[i] = target_ip[i];
 	}
 
-	if (pcap_sendpacket(handle, buf, ARP_PACKET_LEN) == -1) return -1;
-	
+	if (pcap_sendpacket(handle, buf, ARP_PACKET_LEN) == -1){
+		printf("arp request failed\n");
+		return -1;
+	}
 	return 1;
 }
 
-int get_sender_mac(pcap_t* handle, uint8_t* my_mac, uint8_t* my_ip, uint8_t* sender_mac){
+int get_arp_rep(pcap_t* handle, uint8_t* my_mac, uint8_t* my_ip, uint8_t* sender_mac){
 	while (true) {
 		struct pcap_pkthdr* header;
 		const uint8_t* packet;
 		int res = pcap_next_ex(handle, &header, &packet);
 		if (res == 0) continue;
-		if (res == -1 || res == -2) return -1;
-		
+		if (res == -1 || res == -2){
+			printf("error while reading packet\n");
+			return -1;
+		}
+
 		struct libnet_ethernet_hdr * eth_h = (struct libnet_ethernet_hdr*)packet;
-		if(ntohs(eth_h -> ether_type) != ETHERTYPE_ARP)
-			continue;
+		if(ntohs(eth_h -> ether_type) != ETHERTYPE_ARP) continue;
 
 		struct libnet_arp_hdr * arp_h = (struct libnet_arp_hdr*)(eth_h+1);
 		struct arp_addr * arp_a = (struct arp_addr*)(arp_h+1);
-		if(ntohs(arp_h -> ar_op) != ARPOP_REPLY)
-			continue;
+		if(ntohs(arp_h -> ar_op) != ARPOP_REPLY) continue;
 	
 		for(int i=0; i<ETHER_ADDR_LEN; i++)
-			if(arp_a -> ar_tha[i] != my_mac[i])
-				continue;
+			if(arp_a -> ar_tha[i] != my_mac[i]) continue;
 	
 		for(int i=0; i< IP_ADDR_LEN; i++)
-			if(arp_a -> ar_tip[i] != my_ip[i])
-				continue;
+			if(arp_a -> ar_tip[i] != my_ip[i]) continue;
 	
 		for(int i=0; i<ETHER_ADDR_LEN; i++)
 			sender_mac[i] = arp_a -> ar_sha[i];
 		
 		return 1;
 	}
-
 }
 
 int get_my_addr(const char* dev, uint8_t * my_mac, uint8_t* my_ip){
@@ -132,9 +132,9 @@ int main(int argc, char * argv[]){
 		return -1;
 	}
 
-	if (arp_request(handle, buf, my_mac, brdcst_mac, my_ip, sender_ip) == -1) return -1;
-	if (get_sender_mac(handle,my_mac,my_ip,sender_mac) == -1) return -1;
-	if (arp_request(handle, buf, my_mac, sender_mac, target_ip, sender_ip) == -1) return -1;
+	if (send_arp_req(handle, buf, my_mac, brdcst_mac, my_ip, sender_ip) == -1) return -1;
+	if (get_arp_rep(handle,my_mac,my_ip,sender_mac) == -1) return -1;
+	if (send_arp_req(handle, buf, my_mac, sender_mac, target_ip, sender_ip) == -1) return -1;
 	
 	printf("Done\n");
 	pcap_close(handle);
