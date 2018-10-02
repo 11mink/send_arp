@@ -56,7 +56,7 @@ int send_arp_req(pcap_t * handle, uint8_t * buf, uint8_t* src_mac, uint8_t* dst_
 	return 1;
 }
 
-int get_arp_rep(pcap_t* handle, uint8_t* my_mac, uint8_t* my_ip, uint8_t* sender_mac){
+int recv_arp_rep(pcap_t* handle, uint8_t* my_mac, uint8_t* my_ip, uint8_t* sender_mac){
 	while (true) {
 		struct pcap_pkthdr* header;
 		const uint8_t* packet;
@@ -120,20 +120,19 @@ int main(int argc, char * argv[]){
 	uint8_t my_mac[6], sender_mac[6];
 	uint8_t my_ip[4], sender_ip[4], target_ip[4];
 	uint8_t buf[ARP_PACKET_LEN]={0};
-
-	inet_pton(AF_INET, argv[2], sender_ip);
-	inet_pton(AF_INET, argv[3], target_ip);
-
-	if (get_my_addr(dev, my_mac, my_ip) == -1) return -1;
-
+	
 	pcap_t * handle = pcap_open_live(dev,BUFSIZ,1,1000,errbuf);
 	if (handle == NULL) {
 		fprintf(stderr, "couldn't open device %s: %s\n", dev, errbuf);
 		return -1;
 	}
 
+	inet_pton(AF_INET, argv[2], sender_ip);
+	inet_pton(AF_INET, argv[3], target_ip);
+	
+	if (get_my_addr(dev, my_mac, my_ip) == -1) return -1;
 	if (send_arp_req(handle, buf, my_mac, brdcst_mac, my_ip, sender_ip) == -1) return -1;
-	if (get_arp_rep(handle,my_mac,my_ip,sender_mac) == -1) return -1;
+	if (recv_arp_rep(handle, my_mac, my_ip, sender_mac) == -1) return -1;
 	if (send_arp_req(handle, buf, my_mac, sender_mac, target_ip, sender_ip) == -1) return -1;
 	
 	printf("Done\n");
