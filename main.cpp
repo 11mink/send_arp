@@ -58,7 +58,7 @@ int send_arp(pcap_t * handle, uint16_t op, uint8_t* eth_src, uint8_t* eth_dst, u
 	return 1;
 }
 
-int recv_arp(pcap_t* handle, uint8_t* my_mac, uint8_t* my_ip, uint8_t* sender_mac){
+int recv_arp(pcap_t* handle, uint8_t* sender_mac){
 	while (true) {
 		struct pcap_pkthdr* header;
 		const uint8_t* packet;
@@ -130,7 +130,7 @@ int main(int argc, char * argv[]){
 	
 	if (get_my_addr(dev, my_mac, my_ip) == -1) return -1;
 	if (send_arp(handle, ARPOP_REQUEST, my_mac, brdcst_mac, my_mac, my_ip, zero_mac, sender_ip) == -1) return -1;
-	if (recv_arp(handle, my_mac, my_ip, sender_mac) == -1) return -1;
+	if (recv_arp(handle, sender_mac) == -1) return -1;
 	if (send_arp(handle, ARPOP_REPLY, my_mac, sender_mac, my_mac, target_ip, sender_mac, sender_ip) == -1) return -1;
 	
 	printf("Done\n");
